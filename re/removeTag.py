@@ -47,13 +47,3 @@ if __name__ == "__main__":
 
             f2.write(removeTail)
 
-            # str2="hkonwehjhasf</unit>"
-            # pattern1 = re.compile(r'<unit .* hash= .{40}>')
-            # print(pattern1.findall(str))
-            # out=re.sub(pattern1,"",str)
-            # print(out)
-            # # pattern2=re.compile((r'</unit>'))
-            # # out=re.sub(pattern2,"",str2)
-            # #
-            # # print(out)
-            # print(len("82658b15e665f6dcb4bedb2dc8871f9d3506f00a"))
