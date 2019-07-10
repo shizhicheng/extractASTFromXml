@@ -1,6 +1,5 @@
 import os
 import sys
-import xml.dom.minidom as xmldom
 import xml.etree.ElementTree as ET
 import copy
 

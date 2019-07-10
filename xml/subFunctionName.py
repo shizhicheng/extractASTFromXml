@@ -1,10 +1,10 @@
-'''
-将所有的函数名替换为f
-'''
+
 import pickle
 import xml.etree.ElementTree as ET
 import sys
-
+'''
+将所有的函数名替换为f
+'''
 
 # 解析xml文件
 def parseXML(path):

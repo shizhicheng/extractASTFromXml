@@ -3,6 +3,11 @@ import sys
 import xml.etree.ElementTree as ET
 import pickle
 
+'''
+提取xml中的function，并序列化写出
+每一条是一个二元祖，第一个元素是函数名，第二个元素为函数的根节点
+'''
+
 
 # 将所有的函数体存放到同一个文件中
 def extractFunction(readFrom, writeTo):
@@ -133,5 +138,5 @@ if __name__ == "__main__":
     path7 = "I:\\prcessedData\\functionList\\batchXml\\batch7temp.xml"
     path8 = "I:\\prcessedData\\functionList\\batchXml\\batch.data"
     # functionXmlToPickle(path7, path8)
-    # readPickle(path8)
-    countMethodNum(path8)
+    readPickle(path8)
+    # countMethodNum(path8)
