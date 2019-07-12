@@ -1,7 +1,7 @@
 from vectorizer.nodeMap import nodeMap
-from vectorizer.constVariable import testXmlPath
+from vectorizer.parameters import testXmlPath
 from ExtractStatement.ExtractStatement import parseXML
-from vectorizer.constVariable import dataPath, samplePath
+from vectorizer.parameters import dataPath, samplePath
 import pickle
 import sys
 

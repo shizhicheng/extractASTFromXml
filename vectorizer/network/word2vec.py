@@ -1,7 +1,7 @@
 import tensorflow as tf
 from vectorizer.nodeMap import nodeMap
 import math
-from vectorizer.constVariable import BATCH_SIZE,NUM_FEATURES,HIDDEN_NODES
+from vectorizer.parameters import BATCH_SIZE,NUM_FEATURES,HIDDEN_NODES
 def init_net(
         batch_size=BATCH_SIZE, num_feats=NUM_FEATURES, hidden_size=HIDDEN_NODES,
 ):
