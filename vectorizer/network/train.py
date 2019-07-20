@@ -1,5 +1,4 @@
 import os
-import logging
 import pickle
 import tensorflow as tf
 import vectorizer.network.word2vec as network
@@ -42,7 +41,6 @@ def learn_vectors(samples, logdir, outfile, num_feats=NUM_FEATURES, epochs=EPOCH
         config = projector.ProjectorConfig()
         embedding = config.embeddings.add()
         embedding.tensor_name = embed_node.name
-        embedding.metadata_path = os.path.join('vectorizer', 'metadata.tsv')
         projector.visualize_embeddings(writer, config)
 
     sess.run(tf.global_variables_initializer())
@@ -53,7 +51,7 @@ def learn_vectors(samples, logdir, outfile, num_feats=NUM_FEATURES, epochs=EPOCH
 
     step = 0
     for epoch in range(1, epochs + 1):
-        sample_gen = sampling.batch_samples(samples, BATCH_SIZE)
+        sample_gen = sampling.batchSamples(samples, BATCH_SIZE)
         for batch in sample_gen:
             input_batch, label_batch = batch
 

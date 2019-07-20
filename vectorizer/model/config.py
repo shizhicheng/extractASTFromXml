@@ -1,0 +1,28 @@
+# 中间节点的维度
+MIDDLE_NODE_EMBEDDING_SIZE = 128
+
+# 叶子节点的维度
+LEAF_NODE_EMBEDDING_SIZE = 128
+
+# 隐藏单元的维度
+HIDDEN_SIZE = 128
+# RNN的层数
+NUM_LAYER = 2
+
+# 定义词汇表长度
+LEAVE_VOCAB_SIZE = 120000
+MIDDLE_NODE_VOCAB_SIZE = 57
+TAR_VOCAB_SIZE = 10000
+
+# 定义神经元
+LSTM_UNIT = True
+GRU = False
+
+# 共享词向量层
+SHARE_EMB_AND_SOFTMAX = True
+
+# 批处理大小
+BATCH_SIZE = 128
+
+# 节点不被dropout的概率
+KEEP_PROB = 0.8

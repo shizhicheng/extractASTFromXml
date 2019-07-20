@@ -1,5 +1,6 @@
 import sys
 import xml.etree.ElementTree as ET
+import pickle
 '''
 根据函数体源码生成的xml提取statement子树序列
 '''
@@ -75,6 +76,13 @@ def process(path):
     statementList = extractStatement(treeDeepFirstList)
     return statementList
 
+#根据根节点提取AST
+def extractSTBaseRoot(root):
+    treeDeepFirstList = []
+    createTreeDeepFirst(root, treeDeepFirstList, None)
+    statementList = extractStatement(treeDeepFirstList)
+    return statementList
+
 
 # statement节点
 statemnentTag = {"if", "while", "for", "do", "break", "continue", "function", "label", "return", "switch", "case",
@@ -82,8 +90,9 @@ statemnentTag = {"if", "while", "for", "do", "break", "continue", "function", "l
                  "synchronized"
                  }
 
-if __name__ == "__main__":
-    path = "C:\\Users\\shizhicheng\\Desktop\\test.xml"
-    stmtList = process(path)
-    for node in stmtList:
-        print(node.tag)
+# if __name__ == "__main__":
+#     with open("I:\\data\\batchReplaceFunctionName.data", "rb") as f:
+#         data = pickle.load(f)
+#         root0=data[1]
+#         print(extractSTBaseRoot(root0))
+

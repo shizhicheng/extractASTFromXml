@@ -1,8 +1,7 @@
 from vectorizer.nodeMap import nodeMap
-from vectorizer.parameters import testXmlPath
-from ExtractStatement.ExtractStatement import parseXML
 from vectorizer.parameters import dataPath, samplePath
 import pickle
+import numpy as np
 import sys
 
 '''
@@ -19,7 +18,7 @@ def getParentChildPair(root, pairList):
     return pairList
 
 
-# 获得文件中所有（parent，child，并序列化写入外存
+# 获得文件中所有（parent，child)，并序列化写入外存
 def getAllPair(readFrom, writeTo):
     with open(readFrom, 'rb') as f:
         data = pickle.load(f)
@@ -62,13 +61,22 @@ def batchSamples(samples, batchSize):
             batch, count = ([], []), 0
 
 
-#
-def sampleProcess(pairPath):
-    with open(pairPath,"rb") as f:
-        samples=pickle.load(f)
+# path指定外存路径
+# sampleType指定是训练，验证，测试，3:1:1比例
+def getSamples(path, sampleType):
+    with open(path, 'rb') as f:
+        samples = pickle.load(f)
+        samplesLen = len(samples)
+        samples = np.asarray(samples)
+
+        if sampleType is "train":
+            samples = samples[:int(0.6 * samplesLen)]
+        elif sampleType is "validate":
+            samples = samples[int(0.6 * samplesLen): int(0.8 * samplesLen)]
+        elif sampleType is "test":
+            samples = samples[int(0.8 * samplesLen):]
+    return samples
 
 
 
-if __name__ == "__main__":
-    sys.setrecursionlimit(1000000)
-    getAllPair(dataPath, samplePath)
+# print(samples)
