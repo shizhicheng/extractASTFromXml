@@ -1,10 +1,10 @@
 from vectorizer.model.config import *
-
+import time
 import tensorflow as tf
 # from vectorizer.model.sampling import makeDataSet, padListsToMatrix, removeLeaveNodePadEmbeddings, \
 #     removeMidNodePadEmbeddings
 from vectorizer.model.constVariable import *
-from vectorizer.model.sampling import *
+from vectorizer.model.samplingTest import *
 from vectorizer.parameters import NUM_FEATURES  # 中间节点向量的维度
 import pickle
 
@@ -55,11 +55,18 @@ class ASTNN:
             "bias", [TAR_VOCAB_SIZE]
         )
 
-    def forward(self, midNodeList, leaveList, STNum, trgInput, trgLabel,
-                trg_size):
-        # 对矩阵进行填充得到规范矩阵
-        midNodeListPad, leaveNodeListPad, trgInputPad, trgLabelPad = \
-            padListsToMatrix(midNodeList, leaveList, trgInput, trgLabel, STNum)
+    def forward(self):
+
+        midNodeListPad = tf.placeholder(tf.int32,shape=[BATCH_SIZE,None,None], name="midNodeListPad")
+        leaveNodeListPad = tf.placeholder(tf.int32,shape=[BATCH_SIZE,None,None], name="leaveNodeListPad")
+        trgInputPad = tf.placeholder(tf.int32,shape=[BATCH_SIZE,None], name="midNodeListPad")
+        trgLabelPad = tf.placeholder(tf.int32,shape=[BATCH_SIZE,None], name="midNodeListPad")
+
+        midNodeMaskInput = tf.placeholder(tf.int32,shape=[BATCH_SIZE,None,None], name="midNodeMaskInput")
+        leaveNodeMaskInput = tf.placeholder(tf.int32,shape=[BATCH_SIZE,None,None], name="leaveNodeMaskInput")
+
+        STNum = tf.placeholder(tf.int32,shape=[BATCH_SIZE], name="STNum")
+        trg_size = tf.placeholder(tf.int32,shape=[BATCH_SIZE], name="trg_size")
 
         # 获得中间节点向量矩阵 batchSize * statementLen * maxListLen * NUM_FEATURES
         # maxListLen为每个batch中最长list的维度
@@ -73,15 +80,13 @@ class ASTNN:
 
         # 将填充的向量设置为零向量
 
-        # 根据midNodeList创建一个矩阵，矩阵的每个维度的大小是列表中的最高维度的大小，
+        # 根据midNodeList创建一个矩阵midNodeMask，矩阵的每个维度的大小是列表中的最高维度的大小，
         # 得到的矩阵包含两个值0，以及向量的大小
         # 如果是0，则该位置经过mask变换后将形成一个0向量
         # 若是向量的大小，经过mask变换后将保留原先向量的值
-        midNodemaskInput = removeMidNodePadEmbeddingsMaskInput(midNodeList, NUM_FEATURES)
-        leaveNodemaskInput = removeLeaveNodePadEmbeddingsMaskInput(leaveList, HIDDEN_SIZE)
 
-        midNodeMask = tf.sequence_mask(midNodemaskInput, NUM_FEATURES, dtype=tf.float32)
-        leaveNodeMask = tf.sequence_mask(leaveNodemaskInput, HIDDEN_SIZE, dtype=tf.float32)
+        midNodeMask = tf.sequence_mask(midNodeMaskInput, NUM_FEATURES, dtype=tf.float32)
+        leaveNodeMask = tf.sequence_mask(leaveNodeMaskInput, HIDDEN_SIZE, dtype=tf.float32)
 
         midNodeEmbeddingRemovePad = midNodeEmbedding * midNodeMask
         leaveEmbeddingRemovePad = leaveNodeMask * leaveEmbedding
@@ -134,7 +139,7 @@ class ASTNN:
         # 模型的训练
 
         label_weights = tf.sequence_mask(
-            trg_size, maxlen=len(trgLabel[0]), dtype=tf.float32
+            trg_size, maxlen=tf.shape(trgLabelPad)[1], dtype=tf.float32
         )
         label_weights = tf.reshape(label_weights, [-1])
         cost = tf.reduce_sum(loss * label_weights)
@@ -148,27 +153,8 @@ class ASTNN:
         optimizer = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE)
         train_op = optimizer.apply_gradients(zip(grads, trainable_variables))
 
-        return cost_per_token, train_op
+        return cost_per_token, train_op, midNodeListPad, leaveNodeListPad, trgInputPad, trgLabelPad, midNodeMaskInput, leaveNodeMaskInput, STNum, trg_size
 
-    def run_epoch(self, session, cost_op, train_op, saver, step):
-        # 训练一个epoch
-        # 重复训练步骤直至遍历完所有的数据
-        while True:
-            try:
-                # 运行train_op并计算损失值
-                cost, _ = session.run([cost_op, train_op])
-
-                # 每处理100个batch打印一下损失值
-                if step % 10 == 0:
-                    print("After %d steps ,per token cost is  %.3f" % (step, cost))
-
-                # 每1000步保存一个checkpoint
-                if step % 100 == 0:
-                    saver.save(session, CHECKPOINT_PATH, global_step=step)
-                step += 1
-            except tf.errors.OutOfRangeError:
-                break
-        return step
 
     def main(self):
         initializer = tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_OUT', uniform=True)
@@ -177,13 +163,17 @@ class ASTNN:
         with tf.variable_scope("astnn", reuse=None, initializer=initializer):
             train_model = ASTNN()
 
+        #预先将字典加载入内存
+        with open(leaveDicPath, "rb") as f:
+            leaveDic = pickle.load(f)
+        with open(methodNameDicPath, "rb") as f:
+            methodNameDic = pickle.load(f)
+
         # 定义输入数据，sample操作
-        sample_gen = batchSamples(BATCH_SIZE)
-        midNodeList, midNodesListLen, leaveList, leaveNodesListLen, STNum, trgInput, trgLabel, trgSize = sample_gen.__next__()
+        sample_gen = batchSamples(BATCH_SIZE,leaveDic,methodNameDic)
 
         # 定义前向计算图
-        cost_op, train_op = train_model.forward(midNodeList, leaveList, STNum, trgInput, trgLabel,
-                                                trgSize)
+        cost_op, train_op, midNodeListPad, leaveNodeListPad, trgInputPad, trgLabelPad, midNodeMaskInput, leaveNodeMaskInput, STNum, trgSize = train_model.forward()
 
         # 训练模型
         saver = tf.train.Saver()
@@ -191,9 +181,45 @@ class ASTNN:
 
         with tf.Session()  as sess:
             tf.global_variables_initializer().run()
+            lostBatch=0
             for i in range(NUM_EPOCH):
                 print("In iteration : %d" % (i + 1))
-                step = self.run_epoch(sess, cost_op, train_op, saver, step)
+
+                start = time.time()
+                for batch in sample_gen:
+                    midNodeList, _, leaveList, _, STNumBatch, trgInput, trgLabel, trgSizeBatch = batch
+
+                    midNodeListPadBatch, leaveNodeListPadBatch, trgInputPadBatch, trgLabelPadBatch = padListsToMatrix(
+                        midNodeList, leaveList, trgInput, trgLabel, STNumBatch)
+
+                    midNodeMaskInputBatch = removeMidNodePadEmbeddingsMaskInput(midNodeList, NUM_FEATURES)
+                    try:
+                        leaveNodeMaskInputBatch = removeLeaveNodePadEmbeddingsMaskInput(leaveList, HIDDEN_SIZE)
+                    except MemoryError:
+                        lostBatch=0
+                        continue
+                    cost,_=sess.run([cost_op, train_op], feed_dict={
+                        midNodeListPad: midNodeListPadBatch,
+                        leaveNodeListPad:leaveNodeListPadBatch,
+                        trgInputPad:trgInputPadBatch,
+                        trgLabelPad:trgLabelPadBatch,
+                        midNodeMaskInput:midNodeMaskInputBatch,
+                        leaveNodeMaskInput:leaveNodeMaskInputBatch,
+                        STNum:STNumBatch,
+                        trgSize:trgSizeBatch
+                    })
+                    if step % 10 == 0:
+                        end=time.time()
+                        print("After %d steps ,per token cost is  %.3f, consume %.3f seconds" % (step, cost,end-start))
+
+                    # 每1000步保存一个checkpoint
+                    if step % 100 == 0:
+                        saver.save(sess, CHECKPOINT_PATH, global_step=step)
+
+                    step +=1
+
+            print("the number of lost batch is ",lostBatch)
+
 
 
 if __name__ == "__main__":

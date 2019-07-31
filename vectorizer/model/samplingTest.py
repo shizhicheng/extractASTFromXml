@@ -7,10 +7,24 @@ import copy
 import numpy as np
 from vectorizer.model.constVariable import *
 
+isExcute = False  # 用来第一次移动文件指针
+
 
 # 获得批处理数据,方法名和方法体
-def batchSamples(batchSize):
+def batchSamples(batchSize, leaveDic, methodNameDic):
     with open(dataPath, "rb") as f:
+        ###将文件指针移动到断点位置
+        count = 1
+        global isExcute
+
+        if isExcute is False:
+            while count <= 122000:
+                pickle.load(f)
+                count += 1
+            print("read from %d data" % (count-1))
+        isExcute = True
+        ###
+
         batch = ([], [])
         data = pickle.load(f)
         count = 0
@@ -27,7 +41,7 @@ def batchSamples(batchSize):
                 methondNameList = batch[0]
 
                 midNodesList, midNodesListLen, leaveNodesList, leaveNodesListLen, STNum, trgInput, trgLabel, trgLen = \
-                    generateBatchSample(rootList, methondNameList)
+                    generateBatchSample(rootList, methondNameList, leaveDic, methodNameDic)
                 yield midNodesList, midNodesListLen, leaveNodesList, leaveNodesListLen, STNum, trgInput, trgLabel, trgLen
                 batch, count = ([], []), 0
 
@@ -35,9 +49,7 @@ def batchSamples(batchSize):
 # 获得所有叶子节点
 # root:根节点
 # path:叶子节点的字典
-def getAllLeave(root, path, leaveList):
-    with open(path, "rb") as f:
-        leaveDic = pickle.load(f)
+def getAllLeave(root, leaveDic, leaveList):
     # leaveList = []
     if root.text != None:
         # 对叶子节点进行分词，词性还原(默认将大写还原成小写)
@@ -55,7 +67,7 @@ def getAllLeave(root, path, leaveList):
                 leaveList.append(leaveDic[UNK_ID])
 
     for node in root:
-        getAllLeave(node, leaveDicPath, leaveList)
+        getAllLeave(node, leaveDic, leaveList)
 
     return leaveList
 
@@ -70,34 +82,31 @@ def getAllMidNode(root, midNodeList):
 
 
 # 获得方法名的subtoken序列
-def getAllMethodNameSubToken(methodName, path):
-    with open(path, "rb") as f:
-        methodNameDic = pickle.load(f)
+def getAllMethodNameSubToken(methodName, methodNameDic):
+    # 分词
+    pattern = re.compile(r'[A-Z][A-Z]+|[a-z]+|[A-Z]{1}[a-z]*')
+    subTokens = pattern.findall(methodName)
 
-        # 分词
-        pattern = re.compile(r'[A-Z][A-Z]+|[a-z]+|[A-Z]{1}[a-z]*')
-        subTokens = pattern.findall(methodName)
+    # 提取词干并转化成该词的编号
+    methodNameList = []
+    for token in subTokens:
+        token = token.lower()
+        if token in methodNameDic:
+            methodNameList.append(methodNameDic[token])
+        else:
+            methodNameList.append(methodNameDic[UNK_ID])
 
-        # 提取词干并转化成该词的编号
-        methodNameList = []
-        for token in subTokens:
-            token = token.lower()
-            if token in methodNameDic:
-                methodNameList.append(methodNameDic[token])
-            else:
-                methodNameList.append(methodNameDic[UNK_ID])
+    # 获得trgInput,trgLabel
+    trgInput = copy.deepcopy(methodNameList)
+    trgInput.insert(0, methodNameDic[SOS_ID])
 
-        # 获得trgInput,trgLabel
-        trgInput = copy.deepcopy(methodNameList)
-        trgInput.insert(0, methodNameDic[SOS_ID])
-
-        trgLabel = methodNameList.copy()
-        trgLabel.append(methodNameDic[EOS_ID])
+    trgLabel = methodNameList.copy()
+    trgLabel.append(methodNameDic[EOS_ID])
 
     return trgInput, trgLabel
 
 
-def generateBatchSample(rootList, methondNameList):
+def generateBatchSample(rootList, methondNameList, leaveDic, methodNameDic):
     midNodesList = []
     midNodesListLen = []
     leaveNodesList = []
@@ -127,7 +136,7 @@ def generateBatchSample(rootList, methondNameList):
             statementTreeMidNodesListLen.append(len(singleStatementTreeMidNodesList))  # [ ]
 
             # 获得子树叶子节点编号，以及该子树叶子节点的数目
-            singleStatementTreeLeaveList = getAllLeave(node, leaveDicPath, [])  # []
+            singleStatementTreeLeaveList = getAllLeave(node, leaveDic, [])  # []
             statementTreeLeaveList.append(singleStatementTreeLeaveList)  # [ [] ]
             statementTreeLeaveListLen.append(len(singleStatementTreeLeaveList))  # [ ]
 
@@ -147,7 +156,7 @@ def generateBatchSample(rootList, methondNameList):
     # 对方法进行处理，若方法名分词得到ABC，则处理得到两种形式的数据表示：
     # <sos>ABC  ABC<eos>
     for methodName in methondNameList:
-        singleTrgInput, singleTrgLabel = getAllMethodNameSubToken(methodName, methodNameDicPath)
+        singleTrgInput, singleTrgLabel = getAllMethodNameSubToken(methodName, methodNameDic)
         singleTrgLen = len(singleTrgInput)
         trgInput.append(singleTrgInput.copy())
         trgLabel.append(singleTrgLabel.copy())
@@ -215,6 +224,7 @@ def padListsToMatrix(midNodesList, leaveNodesList, trgInput, trgLabel, STNum):
     trgInputPad = pad2DList(trgInput, BATCH_SIZE, maxTrgInput)
     trgLabelPad = pad2DList(trgLabel, BATCH_SIZE, maxTrgLabel)
     return midNodesListPad, leaveNodesListPad, trgInputPad, trgLabelPad
+
 
 def removeMidNodePadEmbeddingsMaskInput(midNodeList, embeddingSize):
     # 获得这个三维列表的最高维度

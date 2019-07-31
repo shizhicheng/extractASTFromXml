@@ -6,6 +6,7 @@ import sys
 import xml.etree.ElementTree as ET
 import re
 
+
 # 解析xml
 def parseXML(path):
     try:
@@ -35,9 +36,6 @@ def storeLeaves(root, leafSet):
     for node in root:
         storeLeaves(node, leafSet)
     return leafSet
-
-
-
 
 
 # 将叶子节点存放在字典中，（key,count）
@@ -239,28 +237,45 @@ if __name__ == "__main__":
     path2 = "..\\data\\dictionary\\leaveDic.data"
     path3 = "..\\data\\dictionary\\methodNameDic.data"
 
-    # storeVocabularyProcess(path1, path2)
-
-    # with open(path2, 'wb') as f:
-    #     pickle.dump(leaveSet, f)
-    # methodNameSet = methodNameVocabulary(path1)
-    # with open(path3, 'wb') as f:
-    #     pickle.dump(methodNameSet, f)
-    # with open(path4, "rb") as f:
-    #     leaveSet = pickle.load(f)
-    #     nodeMap = {x: i for (i, x) in enumerate(list(leaveSet))}
+    # unk = 1  # 未知字符
+    # sos = 2  # 句子开始字符
+    # eos = 3  # 句子终结字符
+    #
+    # # 生成叶子节点的字典表
+    # leaveSet = leaveVocabulary(path1, 120000)
+    # with open(path2, "wb") as f:
+    #     if "unk" in leaveSet:
+    #         leaveSet.remove("unk")
+    #     leaveList = list(leaveSet)
+    #
+    #
+    #     leaveList.insert(0, "unk")
+    #     nodeMap = {x: i + 1 for (i, x) in enumerate(leaveList)}
     #     print(nodeMap)
+    #     pickle.dump(nodeMap, f)
 
-    #生成叶子节点的字典表
-    leaveSet = leaveVocabulary(path1, 120000)
-    with open(path2, "wb") as f:
-        nodeMap = {x: i for (i, x) in enumerate(list(leaveSet))}
-        print(nodeMap)
-        pickle.dump(nodeMap, f)
+    # # 生成方法名的字典表
+    # methodNameSet = methodNameVocabulary(path1)
+    # with open(path3, "wb") as f:
+    #     # 如果原先的集合包含这三个字段则删除
+    #     if "unk" in methodNameSet:
+    #       methodNameSet.remove("unk")
+    #     if "sos" in methodNameSet:
+    #         methodNameSet.remove("sos")
+    #     if "eos" in methodNameSet:
+    #         methodNameSet.remove("eos")
 
-    # 生成方法名的字典表
-    methodNameSet = methodNameVocabulary(path1)
-    with open(path3, "wb") as f:
-        nodeMap = {x: i for (i, x) in enumerate(list(methodNameSet))}
-        print(nodeMap)
-        pickle.dump(nodeMap, f)
+        # # 将集合转变成列表，在列表的开头插入这三个字段，再将列表转化成字典
+        # methodNameList = list(methodNameSet)
+        # methodNameList.insert(0, 'unk')
+        # methodNameList.insert(0, 'sos')
+        # methodNameList.insert(0, "eos")
+        #
+        # nodeMap = {x: i + 1 for (i, x) in enumerate(methodNameList)}
+        # print(nodeMap)
+        # pickle.dump(nodeMap, f)
+
+    with open(path3,"rb") as f:
+        dic=pickle.load(f)
+        print(dic["eos"])
+
